@@ -1,0 +1,42 @@
+version: '3'
+
+services:
+  traefik:
+    image: traefik
+    command: --api --docker # Enables the web UI and tells Træfik to listen to docker
+    ports:
+      - "8080:80"     # The HTTP port
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  consul:
+    image: consul
+    restart: unless-stopped
+    ports:
+      - 8500:8500
+    labels:
+      - "traefik.port=8500"
+      - "traefik.frontend.rule=PathPrefixStrip:/consul/"
+      - "traefik.frontend.rule=PathPrefix:/ui/,/v1/"
+
+  den-travak:
+    image: den-travak-app:0.0.1-SNAPSHOT
+    restart: unless-stopped
+    depends_on:
+      - consul
+    ports:
+      - 8234:8080
+    labels:
+      - "traefik.port=8080"
+      - "traefik.frontend.rule=PathPrefix:/den-travak/"
+
+  recommendation:
+    image: recommendation-app:0.0.1-SNAPSHOT
+    restart: unless-stopped
+    depends_on:
+      - consul
+    ports:
+      - 8235:8081
+    labels:
+      - "traefik.port=8081"
+      - "traefik.frontend.rule=PathPrefix:/recommendation/"
